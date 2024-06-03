@@ -79,7 +79,7 @@ void PSX::WriteMemory32(uint32_t addr, uint32_t value)
     {
         std::cerr << "Unimplemented register: BIOS ROM Delay/Size" << std::endl;
     }
-    else if (addr == 0x1f801060)
+    else if (addr == 0x1F801060)
     {
         std::cerr << "Unimplemented register: RAM_SIZE" << std::endl;
     }
