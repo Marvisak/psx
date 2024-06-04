@@ -52,6 +52,7 @@ uint32_t PSX::ReadMemory32(uint32_t addr)
     {
         // TODO: Add exception
         spdlog::error("Memory is not alligned {:08X}", addr);
+        exit(0);
         return 0;
     }
     return ReadMemory16(addr + 2) << 16 | ReadMemory16(addr);
@@ -63,6 +64,10 @@ void PSX::WriteMemory8(uint32_t addr, uint8_t value)
     if (addr <= 0x200000)
     {
         ram[addr] = value;
+    }
+    else if (addr == 0x1F802041)
+    {
+        spdlog::info("BIOS Boot Progress: {:X}", value);
     }
     else
     {
@@ -77,6 +82,7 @@ void PSX::WriteMemory16(uint32_t addr, uint16_t value)
     {
         // TODO: Add exception
         spdlog::error("Memory is not alligned {:04X}", addr);
+        exit(0);
         return;
     }
 
@@ -86,8 +92,8 @@ void PSX::WriteMemory16(uint32_t addr, uint16_t value)
     }
     else
     {
-        WriteMemory8(addr, value >> 8);
-        WriteMemory8(addr + 1, value & 0xFF);
+        WriteMemory8(addr, value & 0xFF);
+        WriteMemory8(addr + 1, value >> 8);
     }
 }
 
@@ -97,21 +103,22 @@ void PSX::WriteMemory32(uint32_t addr, uint32_t value)
     {
         // TODO: Add exception
         spdlog::error("Memory is not alligned {:08X}", addr);
+        exit(0);
         return;
     }
 
     if (addr >= 0x1F801000 && addr <= 0x1F801060)
     {
-        spdlog::error("Unimplemented Memory Control Register: {:08X}", addr);
+        spdlog::warn("Unimplemented Memory Control Register: {:08X}", addr);
     }
     else if (addr == 0xFFFE0130)
     {
-        spdlog::error("Unimplemented Cache Control Register: {:08X}", addr);
+        spdlog::warn("Unimplemented Cache Control Register: {:08X}", addr);
     }
     else
     {
-        WriteMemory16(addr, value >> 16);
-        WriteMemory16(addr + 2, value & 0xFFFF);
+        WriteMemory16(addr, value & 0xFFFF);
+        WriteMemory16(addr + 2, value >> 16);
     }
 }
 
