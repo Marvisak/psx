@@ -6,7 +6,7 @@
 
 uint8_t *LoadBIOSFile(const char *file_name)
 {
-    std::ifstream file(file_name);
+    std::ifstream file(file_name, std::ios::binary);
     if (file.fail())
         return nullptr;
 
@@ -14,7 +14,7 @@ uint8_t *LoadBIOSFile(const char *file_name)
     auto size = file.tellg();
     file.seekg(0, std::ios::beg);
 
-    uint8_t *buffer = new uint8_t[size];
+    auto *buffer = new uint8_t[size];
     file.read(reinterpret_cast<char *>(buffer), size);
 
     return buffer;

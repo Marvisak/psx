@@ -5,7 +5,7 @@
 PSX::PSX(uint8_t *bios) : bios(bios)
 {
     cpu = new CPU(this);
-    ram = new uint8_t[0x1F4000];
+    ram = new uint8_t[0x200000];
 }
 
 PSX::~PSX()
@@ -25,7 +25,7 @@ void PSX::Run()
 uint8_t PSX::ReadMemory8(uint32_t addr)
 {
     addr = MirrorAddress(addr);
-    if (addr <= 0x1F4000)
+    if (addr <= 0x200000)
     {
         return ram[addr];
     }
@@ -79,8 +79,16 @@ void PSX::WriteMemory16(uint32_t addr, uint16_t value)
         std::cerr << std::hex << "Memory is not alligned " << addr << std::endl;
         return;
     }
-    WriteMemory8(addr, value >> 8);
-    WriteMemory8(addr + 1, value & 0xFF);
+
+    if (addr >= 0x1F801D80 && addr <= 0x1F801D86)
+    {
+        std::cerr << "Unimplemented SPU Register: " << addr << std::endl;
+    }
+    else
+    {
+        WriteMemory8(addr, value >> 8);
+        WriteMemory8(addr + 1, value & 0xFF);
+    }
 }
 
 void PSX::WriteMemory32(uint32_t addr, uint32_t value)
