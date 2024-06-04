@@ -25,8 +25,9 @@ public:
 
     void LW(uint32_t opcode);
 
-    void SW(uint32_t opcode);
+    void SB(uint32_t opcode);
     void SH(uint32_t opcode);
+    void SW(uint32_t opcode);
 
     void ADDU(uint32_t opcode);
     void ADDI(uint32_t opcode);
@@ -35,12 +36,14 @@ public:
     void SLTU(uint32_t opcode);
 
     void OR(uint32_t opcode);
+    void ANDI(uint32_t opcode);
     void ORI(uint32_t opcode);
 
     void SLL(uint32_t opcode);
     void LUI(uint32_t opcode);
 
     void J(uint32_t opcode);
+    void JAL(uint32_t opcode);
     void BNE(uint32_t opcode);
 
     void MTC0(uint32_t opcode);

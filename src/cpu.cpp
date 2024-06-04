@@ -1,8 +1,7 @@
 #include "cpu.hpp"
-
 #include "psx.hpp"
 
-#include <iostream>
+#include "spdlog/spdlog.h"
 
 #ifdef WIN32
 #include <intrin.h>
@@ -39,6 +38,9 @@ void CPU::RunPrimaryInstruction(uint32_t opcode)
     case 0x2:
         J(opcode);
         break;
+    case 0x3:
+        JAL(opcode);
+        break;
     case 0x5:
         BNE(opcode);
         break;
@@ -47,6 +49,9 @@ void CPU::RunPrimaryInstruction(uint32_t opcode)
         break;
     case 0x9:
         ADDIU(opcode);
+        break;
+    case 0xC:
+        ANDI(opcode);
         break;
     case 0xD:
         ORI(opcode);
@@ -60,6 +65,9 @@ void CPU::RunPrimaryInstruction(uint32_t opcode)
     case 0x23:
         LW(opcode);
         break;
+    case 0x28:
+        SB(opcode);
+        break;
     case 0x29:
         SH(opcode);
         break;
@@ -68,7 +76,7 @@ void CPU::RunPrimaryInstruction(uint32_t opcode)
         break;
     default:
         // TODO: Add exception
-        std::cerr << std::hex << "Unknown instruction exception " << opcode << std::endl;
+        spdlog::error("Unknown instruction exception: {:08X}", opcode);
         exit(1);
         break;
     }
@@ -92,7 +100,7 @@ void CPU::RunSecondaryInstruction(uint32_t opcode)
         break;
     default:
         // TODO: Add exception
-        std::cerr << std::hex << "Unknown instruction exception " << opcode << std::endl;
+        spdlog::error("Unknown instruction exception: {:08X}", opcode);
         exit(1);
         break;
     }
@@ -116,7 +124,7 @@ void CPU::LW(uint32_t opcode)
 {
     if (sr.isolate_cache)
     {
-        std::cerr << "Cache Isolate enabled, ignoring read" << std::endl;
+        spdlog::info("Cache Isolate enabled, ignoring read");
         return;
     }
 
@@ -126,28 +134,40 @@ void CPU::LW(uint32_t opcode)
     load_slot.value = psx->ReadMemory32(addr);
 }
 
-void CPU::SW(uint32_t opcode)
+void CPU::SB(uint32_t opcode)
 {
     if (sr.isolate_cache)
     {
-        std::cerr << "Cache Isolate enabled, ignoring write" << std::endl;
+        spdlog::info("Cache Isolate enabled, ignoring write");
         return;
     }
     uint32_t addr = (int16_t)IMM16(opcode) + GetRegister(RS(opcode));
-    uint32_t value = GetRegister(RT(opcode));
-    psx->WriteMemory32(addr, value);
+    uint32_t value = GetRegister(RT(opcode)) & 0xFF;
+    psx->WriteMemory8(addr, value);
 }
 
 void CPU::SH(uint32_t opcode)
 {
     if (sr.isolate_cache)
     {
-        std::cerr << "Cache Isolate enabled, ignoring write" << std::endl;
+        spdlog::info("Cache Isolate enabled, ignoring write");
         return;
     }
     uint32_t addr = (int16_t)IMM16(opcode) + GetRegister(RS(opcode));
     uint32_t value = GetRegister(RT(opcode)) & 0xFFFF;
     psx->WriteMemory16(addr, value);
+}
+
+void CPU::SW(uint32_t opcode)
+{
+    if (sr.isolate_cache)
+    {
+        spdlog::info("Cache Isolate enabled, ignoring write");
+        return;
+    }
+    uint32_t addr = (int16_t)IMM16(opcode) + GetRegister(RS(opcode));
+    uint32_t value = GetRegister(RT(opcode));
+    psx->WriteMemory32(addr, value);
 }
 
 void CPU::ADDU(uint32_t opcode)
@@ -167,7 +187,7 @@ void CPU::ADDI(uint32_t opcode)
 #endif
     {
         // TODO: Add exception
-        std::cerr << "ADDI overflow" << std::endl;
+        spdlog::error("ADDI overflow");
         exit(1);
     }
     SetRegister(RT(opcode), value);
@@ -191,6 +211,12 @@ void CPU::OR(uint32_t opcode)
     SetRegister(RD(opcode), value);
 }
 
+void CPU::ANDI(uint32_t opcode)
+{
+    uint32_t value = GetRegister(RS(opcode)) & IMM16(opcode);
+    SetRegister(RT(opcode), value);
+}
+
 void CPU::ORI(uint32_t opcode)
 {
     uint32_t value = GetRegister(RS(opcode)) | IMM16(opcode);
@@ -212,6 +238,13 @@ void CPU::LUI(uint32_t opcode)
 void CPU::J(uint32_t opcode)
 {
     uint32_t addr = pc & 0xF0000000 | IMM26(opcode) << 2;
+    SetRegister(31, pc);
+    pc = addr;
+}
+
+void CPU::JAL(uint32_t opcode)
+{
+    uint32_t addr = pc & 0xF0000000 | IMM26(opcode) << 2;
     pc = addr;
 }
 
@@ -231,14 +264,14 @@ void CPU::MTC0(uint32_t opcode)
     {
         if (value != 0x10000 && value != 0x0)
         {
-            std::cout << std::hex << "SR unknown value " << value << std::endl;
+            spdlog::error("SR unknown value: {:08X}", value);
             exit(0);
         }
         sr.value = value;
     }
     else if (value != 0)
     {
-        std::cerr << "Unhanled COP0 register write " << RD(opcode) << " with value " << value << std::endl;
+        spdlog::error("Unhandled COP0 register write to {:08X} with value {:08X}", RD(opcode), value);
     }
 }
 
@@ -250,7 +283,7 @@ void CPU::HandleCoprocessor0(uint32_t opcode)
         MTC0(opcode);
         break;
     default:
-        std::cerr << std::hex << "Unknown coprocessor instruction exception " << opcode << std::endl;
+        spdlog::error("Unknown coprocessor instruction exception: {:08X}", opcode);
         break;
     }
 }

@@ -1,6 +1,6 @@
 #include "psx.hpp"
 
-#include <iostream>
+#include "spdlog/spdlog.h"
 
 PSX::PSX(uint8_t *bios) : bios(bios)
 {
@@ -35,7 +35,7 @@ uint8_t PSX::ReadMemory8(uint32_t addr)
     }
     else
     {
-        std::cerr << std::hex << "Unknown memory read from " << addr << std::endl;
+        spdlog::error("Unknown memory read from {:08X}", addr);
         exit(0);
         return 0;
     }
@@ -51,7 +51,7 @@ uint32_t PSX::ReadMemory32(uint32_t addr)
     if (addr % 4 != 0)
     {
         // TODO: Add exception
-        std::cerr << std::hex << "Memory is not alligned " << addr << std::endl;
+        spdlog::error("Memory is not alligned {:08X}", addr);
         return 0;
     }
     return ReadMemory16(addr + 2) << 16 | ReadMemory16(addr);
@@ -60,13 +60,13 @@ uint32_t PSX::ReadMemory32(uint32_t addr)
 void PSX::WriteMemory8(uint32_t addr, uint8_t value)
 {
     addr = MirrorAddress(addr);
-    if (addr <= 0x1F4000)
+    if (addr <= 0x200000)
     {
         ram[addr] = value;
     }
     else
     {
-        std::cerr << std::hex << "Unknown memory write to " << addr << " with value " << (int)value << std::endl;
+        spdlog::error("Unknown memory write to {:08X} with value {:02X}", addr, value);
         exit(0);
     }
 }
@@ -76,13 +76,13 @@ void PSX::WriteMemory16(uint32_t addr, uint16_t value)
     if (addr % 2 != 0)
     {
         // TODO: Add exception
-        std::cerr << std::hex << "Memory is not alligned " << addr << std::endl;
+        spdlog::error("Memory is not alligned {:04X}", addr);
         return;
     }
 
     if (addr >= 0x1F801D80 && addr <= 0x1F801D86)
     {
-        std::cerr << "Unimplemented SPU Register: " << addr << std::endl;
+        spdlog::warn("Unimplemented SPU Register: {:04X}", addr);
     }
     else
     {
@@ -96,21 +96,17 @@ void PSX::WriteMemory32(uint32_t addr, uint32_t value)
     if (addr % 4 != 0)
     {
         // TODO: Add exception
-        std::cerr << std::hex << "Memory is not alligned " << addr << std::endl;
+        spdlog::error("Memory is not alligned {:08X}", addr);
         return;
     }
 
     if (addr >= 0x1F801000 && addr <= 0x1F801060)
     {
-        std::cerr << "Unimplemented Memory Control Register: " << std::hex << addr << std::endl;
-    }
-    if (addr >= 0x1F801000 && addr <= 0x1F801060)
-    {
-        std::cerr << "Unimplemented Memory Control Register: " << std::hex << addr << std::endl;
+        spdlog::error("Unimplemented Memory Control Register: {:08X}", addr);
     }
     else if (addr == 0xFFFE0130)
     {
-        std::cerr << "Unimplemented Cache Control Register" << std::endl;
+        spdlog::error("Unimplemented Cache Control Register: {:08X}", addr);
     }
     else
     {
@@ -125,7 +121,7 @@ uint32_t PSX::MirrorAddress(uint32_t addr)
     if (index > 1 && index < 4)
     {
         // TODO: Add exception
-        std::cerr << "Attempted to access forbidden part of KUSEG" << std::endl;
+        spdlog::error("Attempted to access forbidden part of KUSEG");
         exit(0);
     }
     else if (index == 4)
