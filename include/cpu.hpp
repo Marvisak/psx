@@ -50,12 +50,12 @@ public:
 private:
     PSX *psx;
 
-    uint32_t next_instruction;
+    uint32_t next_instruction = 0;
 
     struct
     {
-        int reg;
-        uint32_t value;
+        int reg = 0;
+        uint32_t value = 0;
     } load_slot;
 
     std::array<uint32_t, 31> regs;

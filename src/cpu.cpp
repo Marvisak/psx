@@ -4,6 +4,10 @@
 
 #include <iostream>
 
+#ifdef WIN32
+#include <intrin.h>
+#endif
+
 CPU::CPU(PSX *psx) : psx(psx)
 {
 }
@@ -154,8 +158,13 @@ void CPU::ADDU(uint32_t opcode)
 
 void CPU::ADDI(uint32_t opcode)
 {
+#ifdef WIN32
+    int32_t value;
+    if (_add_overflow_i32(0, GetRegister(RS(opcode)), (int16_t)IMM16(opcode), &value))
+#else
     uint32_t value;
     if (__builtin_add_overflow(GetRegister(RS(opcode)), (int16_t)IMM16(opcode), &value))
+#endif
     {
         // TODO: Add exception
         std::cerr << "ADDI overflow" << std::endl;
