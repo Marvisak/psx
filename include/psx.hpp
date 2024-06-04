@@ -20,7 +20,10 @@ public:
     void WriteMemory16(uint32_t addr, uint16_t value);
     void WriteMemory32(uint32_t addr, uint32_t value);
 
+    uint32_t MirrorAddress(uint32_t addr);
+
 private:
     uint8_t *bios;
+    uint8_t *ram;
     CPU *cpu;
 };

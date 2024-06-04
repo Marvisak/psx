@@ -29,6 +29,11 @@ int main(int argc, const char *argv[])
     }
 
     uint8_t *bios = LoadBIOSFile(argv[1]);
+    if (!bios)
+    {
+        std::cerr << "Invalid BIOS rom" << std::endl;
+        return 1;
+    }
 
     PSX psx(bios);
     psx.Run();
