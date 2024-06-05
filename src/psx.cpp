@@ -49,7 +49,7 @@ uint16_t PSX::ReadMemory16(uint32_t addr)
 {
     if (addr % 2 != 0)
     {
-        cpu->Exception(ExceptionType::AddressError);
+        cpu->Exception(ExceptionType::LoadAddressError);
         spdlog::error("Memory is not alligned {:08X}", addr);
         return 0;
     }
@@ -61,7 +61,7 @@ uint32_t PSX::ReadMemory32(uint32_t addr)
 {
     if (addr % 4 != 0)
     {
-        cpu->Exception(ExceptionType::AddressError);
+        cpu->Exception(ExceptionType::LoadAddressError);
         spdlog::error("Memory is not alligned {:08X}", addr);
         return 0;
     }
@@ -102,7 +102,7 @@ void PSX::WriteMemory16(uint32_t addr, uint16_t value)
 {
     if (addr % 2 != 0)
     {
-        cpu->Exception(ExceptionType::AddressError);
+        cpu->Exception(ExceptionType::StoreAddressError);
         spdlog::error("Memory is not alligned {:04X}", addr);
         return;
     }
@@ -126,7 +126,7 @@ void PSX::WriteMemory32(uint32_t addr, uint32_t value)
 {
     if (addr % 4 != 0)
     {
-        cpu->Exception(ExceptionType::AddressError);
+        cpu->Exception(ExceptionType::StoreAddressError);
         spdlog::error("Memory is not alligned {:08X}", addr);
         return;
     }
@@ -159,7 +159,7 @@ uint32_t PSX::MirrorAddress(uint32_t addr)
     int index = addr >> 29;
     if (index > 1 && index < 4)
     {
-        cpu->Exception(ExceptionType::AddressError);
+        cpu->Exception(ExceptionType::LoadAddressError);
         spdlog::error("Attempted to access forbidden part of KUSEG");
     }
     else if (index == 4)

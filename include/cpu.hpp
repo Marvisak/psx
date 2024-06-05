@@ -13,10 +13,11 @@
 
 enum class ExceptionType : uint8_t
 {
-    AddressError = 0x5,
+    LoadAddressError = 0x4,
+    StoreAddressError = 0x5,
     SysCall = 0x8,
     ReservedInstruction = 0xA,
-    Overflow = 0xB,
+    Overflow = 0xC,
 };
 
 class PSX;
@@ -66,6 +67,8 @@ public:
     void DIVU(uint32_t opcode);
     void MFHI(uint32_t opcode);
     void MFLO(uint32_t opcode);
+    void MTHI(uint32_t opcode);
+    void MTLO(uint32_t opcode);
 
     void J(uint32_t opcode);
     void JAL(uint32_t opcode);
@@ -81,6 +84,7 @@ public:
 
     void MTC0(uint32_t opcode);
     void MFC0(uint32_t opcode);
+    void RFE(uint32_t opcode);
 
     void HandleCoprocessor0(uint32_t opcode);
 

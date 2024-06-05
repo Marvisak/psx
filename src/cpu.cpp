@@ -131,8 +131,14 @@ void CPU::RunSecondaryInstruction(uint32_t opcode)
     case 0x10:
         MFHI(opcode);
         break;
+    case 0x11:
+        MTHI(opcode);
+        break;
     case 0x12:
         MFLO(opcode);
+        break;
+    case 0x13:
+        MTLO(opcode);
         break;
     case 0x1A:
         DIV(opcode);
@@ -449,6 +455,16 @@ void CPU::MFLO(uint32_t opcode)
     SetRegister(RD(opcode), lo);
 }
 
+void CPU::MTHI(uint32_t opcode)
+{
+    hi = GetRegister(RS(opcode));
+}
+
+void CPU::MTLO(uint32_t opcode)
+{
+    lo = GetRegister(RS(opcode));
+}
+
 void CPU::J(uint32_t opcode)
 {
     uint32_t addr = next_pc & 0xF0000000 | IMM26(opcode) << 2;
@@ -572,6 +588,13 @@ void CPU::MFC0(uint32_t opcode)
     }
 }
 
+void CPU::RFE(uint32_t opcode)
+{
+    uint8_t mode = sr.value & 0x3F;
+    sr.value &= !0x3F;
+    sr.value |= mode >> 2;
+}
+
 void CPU::HandleCoprocessor0(uint32_t opcode)
 {
     switch (COP(opcode))
@@ -581,6 +604,9 @@ void CPU::HandleCoprocessor0(uint32_t opcode)
         break;
     case 0x4:
         MTC0(opcode);
+        break;
+    case 0x10:
+        RFE(opcode);
         break;
     default:
         spdlog::error("Unknown coprocessor instruction exception: {:08X}", opcode);
