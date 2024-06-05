@@ -23,30 +23,52 @@ public:
     uint32_t GetRegister(int index);
     void SetRegister(int index, uint32_t value);
 
+    void LB(uint32_t opcode);
+    void LBU(uint32_t opcode);
     void LW(uint32_t opcode);
 
     void SB(uint32_t opcode);
     void SH(uint32_t opcode);
     void SW(uint32_t opcode);
 
+    void ADD(uint32_t opcode);
     void ADDU(uint32_t opcode);
+    void SUBU(uint32_t opcode);
     void ADDI(uint32_t opcode);
     void ADDIU(uint32_t opcode);
 
+    void SLT(uint32_t opcode);
     void SLTU(uint32_t opcode);
+    void SLTI(uint32_t opcode);
+    void SLTIU(uint32_t opcode);
 
+    void AND(uint32_t opcode);
     void OR(uint32_t opcode);
     void ANDI(uint32_t opcode);
     void ORI(uint32_t opcode);
 
     void SLL(uint32_t opcode);
+    void SRL(uint32_t opcode);
+    void SRA(uint32_t opcode);
     void LUI(uint32_t opcode);
+
+    void DIV(uint32_t opcode);
+    void DIVU(uint32_t opcode);
+    void MFHI(uint32_t opcode);
+    void MFLO(uint32_t opcode);
 
     void J(uint32_t opcode);
     void JAL(uint32_t opcode);
+    void JR(uint32_t opcode);
+    void JALR(uint32_t opcode);
+    void BEQ(uint32_t opcode);
     void BNE(uint32_t opcode);
+    void BLEZ(uint32_t opcode);
+    void BGTZ(uint32_t opcode);
+    void Branch(uint32_t opcode);
 
     void MTC0(uint32_t opcode);
+    void MFC0(uint32_t opcode);
 
     void HandleCoprocessor0(uint32_t opcode);
 
@@ -61,12 +83,12 @@ private:
         uint32_t value = 0;
     } load_slot;
 
-    std::array<uint32_t, 31> regs;
-    std::array<uint32_t, 31> out_regs;
+    std::array<uint32_t, 31> regs{};
+    std::array<uint32_t, 31> out_regs{};
 
     union
     {
-        uint32_t value;
+        uint32_t value = 0x10900000;
         struct
         {
             uint16_t pad;
@@ -75,4 +97,6 @@ private:
     } sr;
 
     uint32_t pc = 0xBFC00000;
+    uint32_t hi = 0x0;
+    uint32_t lo = 0x0;
 };
