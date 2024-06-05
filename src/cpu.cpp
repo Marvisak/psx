@@ -13,10 +13,10 @@ CPU::CPU(PSX *psx) : psx(psx)
 
 void CPU::RunInstruction()
 {
-    uint32_t opcode = next_instruction;
-    next_instruction = psx->ReadMemory32(pc);
+    uint32_t opcode = psx->ReadMemory32(pc);
 
-    pc += 4;
+    pc = next_pc;
+    next_pc += 4;
 
     SetRegister(load_slot.reg, load_slot.value);
     load_slot.reg = 0;
@@ -99,7 +99,7 @@ void CPU::RunPrimaryInstruction(uint32_t opcode)
         SW(opcode);
         break;
     default:
-        // TODO: Add exception
+        Exception(ExceptionType::ReservedInstruction);
         spdlog::error("Unknown instruction exception: {:08X}", opcode);
         exit(1);
         break;
@@ -124,6 +124,9 @@ void CPU::RunSecondaryInstruction(uint32_t opcode)
         break;
     case 0x9:
         JALR(opcode);
+        break;
+    case 0xC:
+        SYSCALL(opcode);
         break;
     case 0x10:
         MFHI(opcode);
@@ -159,11 +162,26 @@ void CPU::RunSecondaryInstruction(uint32_t opcode)
         SLTU(opcode);
         break;
     default:
-        // TODO: Add exception
+        Exception(ExceptionType::ReservedInstruction);
         spdlog::error("Unknown instruction exception: {:08X}", opcode);
         exit(1);
         break;
     }
+}
+
+void CPU::Exception(ExceptionType type)
+{
+    uint32_t vector = sr.exception_vector ? 0xBFC00180 : 0x80000080;
+
+    uint8_t mode = sr.value & 0x3F;
+    sr.value &= ~0x3f;
+    sr.value |= (mode << 2) & 0x3F;
+
+    cause.excode = type;
+
+    epc = next_pc;
+    pc = vector;
+    next_pc = pc + 4;
 }
 
 void CPU::SetRegister(int index, uint32_t value)
@@ -265,9 +283,8 @@ void CPU::ADD(uint32_t opcode)
     if (__builtin_add_overflow(GetRegister(RS(opcode)), IMM16(opcode), &value))
 #endif
     {
-        // TODO: Add exception
         spdlog::error("ADD overflow");
-        exit(1);
+        Exception(ExceptionType::Overflow);
     }
     SetRegister(RD(opcode), value);
 }
@@ -288,9 +305,8 @@ void CPU::ADDI(uint32_t opcode)
     if (__builtin_add_overflow(GetRegister(RS(opcode)), (int16_t)IMM16(opcode), &value))
 #endif
     {
-        // TODO: Add exception
         spdlog::error("ADDI overflow");
-        exit(1);
+        Exception(ExceptionType::Overflow);
     }
     SetRegister(RT(opcode), value);
 }
@@ -435,26 +451,26 @@ void CPU::MFLO(uint32_t opcode)
 
 void CPU::J(uint32_t opcode)
 {
-    uint32_t addr = pc & 0xF0000000 | IMM26(opcode) << 2;
-    pc = addr;
+    uint32_t addr = next_pc & 0xF0000000 | IMM26(opcode) << 2;
+    next_pc = addr;
 }
 
 void CPU::JAL(uint32_t opcode)
 {
-    SetRegister(31, pc);
-    uint32_t addr = pc & 0xF0000000 | IMM26(opcode) << 2;
-    pc = addr;
+    SetRegister(31, next_pc);
+    uint32_t addr = next_pc & 0xF0000000 | IMM26(opcode) << 2;
+    next_pc = addr;
 }
 
 void CPU::JR(uint32_t opcode)
 {
-    pc = GetRegister(RS(opcode));
+    next_pc = GetRegister(RS(opcode));
 }
 
 void CPU::JALR(uint32_t opcode)
 {
-    SetRegister(31, pc);
-    pc = GetRegister(RS(opcode));
+    SetRegister(31, next_pc);
+    next_pc = GetRegister(RS(opcode));
 }
 
 void CPU::BEQ(uint32_t opcode)
@@ -462,7 +478,7 @@ void CPU::BEQ(uint32_t opcode)
     if (GetRegister(RS(opcode)) == GetRegister(RT(opcode)))
     {
         int16_t offset = (int16_t)IMM16(opcode) << 2;
-        pc += offset - 4;
+        next_pc += offset - 4;
     }
 }
 
@@ -471,7 +487,7 @@ void CPU::BNE(uint32_t opcode)
     if (GetRegister(RS(opcode)) != GetRegister(RT(opcode)))
     {
         int16_t offset = (int16_t)IMM16(opcode) << 2;
-        pc += offset - 4;
+        next_pc += offset - 4;
     }
 }
 
@@ -480,7 +496,7 @@ void CPU::BLEZ(uint32_t opcode)
     if ((int32_t)GetRegister(RS(opcode)) <= 0)
     {
         int16_t offset = (int16_t)IMM16(opcode) << 2;
-        pc += offset - 4;
+        next_pc += offset - 4;
     }
 }
 
@@ -489,7 +505,7 @@ void CPU::BGTZ(uint32_t opcode)
     if ((int32_t)GetRegister(RS(opcode)) > 0)
     {
         int16_t offset = (int16_t)IMM16(opcode) << 2;
-        pc += offset - 4;
+        next_pc += offset - 4;
     }
 }
 
@@ -507,8 +523,13 @@ void CPU::Branch(uint32_t opcode)
     if (branch)
     {
         int16_t offset = (int16_t)IMM16(opcode) << 2;
-        pc += offset - 4;
+        next_pc += offset - 4;
     }
+}
+
+void CPU::SYSCALL(uint32_t opcode)
+{
+    Exception(ExceptionType::SysCall);
 }
 
 void CPU::MTC0(uint32_t opcode)
@@ -531,14 +552,23 @@ void CPU::MTC0(uint32_t opcode)
 
 void CPU::MFC0(uint32_t opcode)
 {
+    load_slot.reg = RT(opcode);
     if (RD(opcode) == 12)
     {
-        load_slot.reg = RT(opcode);
         load_slot.value = sr.value;
+    }
+    else if (RD(opcode) == 13)
+    {
+        load_slot.value = cause.value;
+    }
+    else if (RD(opcode) == 14)
+    {
+        load_slot.value = epc;
     }
     else
     {
         spdlog::error("Unhandled COP0 register read from {:08X} to {:08X}", RD(opcode), RT(opcode));
+        exit(0);
     }
 }
 

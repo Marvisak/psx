@@ -11,6 +11,14 @@
 #define RS(opcode) (opcode >> 21 & 0x1F)
 #define COP(opcode) (opcode >> 21 & 0x1F)
 
+enum class ExceptionType : uint8_t
+{
+    AddressError = 0x5,
+    SysCall = 0x8,
+    ReservedInstruction = 0xA,
+    Overflow = 0xB,
+};
+
 class PSX;
 class CPU
 {
@@ -22,6 +30,8 @@ public:
 
     uint32_t GetRegister(int index);
     void SetRegister(int index, uint32_t value);
+
+    void Exception(ExceptionType type);
 
     void LB(uint32_t opcode);
     void LBU(uint32_t opcode);
@@ -67,6 +77,8 @@ public:
     void BGTZ(uint32_t opcode);
     void Branch(uint32_t opcode);
 
+    void SYSCALL(uint32_t opcode);
+
     void MTC0(uint32_t opcode);
     void MFC0(uint32_t opcode);
 
@@ -74,8 +86,6 @@ public:
 
 private:
     PSX *psx;
-
-    uint32_t next_instruction = 0;
 
     struct
     {
@@ -93,9 +103,23 @@ private:
         {
             uint16_t pad;
             bool isolate_cache : 1;
+            uint8_t pad2 : 5;
+            bool exception_vector : 1;
         };
     } sr;
 
+    union
+    {
+        uint32_t value = 0x0;
+        struct
+        {
+            uint8_t _ : 2;
+            ExceptionType excode : 5;
+        };
+    } cause;
+    uint32_t epc;
+
+    uint32_t next_pc = 0xBFC00004;
     uint32_t pc = 0xBFC00000;
     uint32_t hi = 0x0;
     uint32_t lo = 0x0;
